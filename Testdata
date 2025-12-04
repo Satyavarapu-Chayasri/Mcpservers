@@ -1,0 +1,447 @@
+math_client.py
+import os
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def call_add_tool(a: int, b: int):
+    script_path = os.path.join(os.path.dirname(__file__), "math_server.py")
+
+    server_params = StdioServerParameters(
+        command="python",
+        args=[script_path],
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool("add", {"a": a, "b": b})
+            return result.structuredContent["result"]
+async def call_sub_tool(a: int, b: int):
+    script_path = os.path.join(os.path.dirname(__file__), "math_server.py")
+
+    server_params = StdioServerParameters(
+        command="python",
+        args=[script_path],
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool("subtract", {"a": a, "b": b})
+            return result.structuredContent["result"]
+
+async def call_multiply_tool(a: int, b: int):
+    script_path = os.path.join(os.path.dirname(__file__), "math_server.py")
+
+    server_params = StdioServerParameters(
+        command="python",
+        args=[script_path],
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool("multiply", {"a": a, "b": b})
+            return result.structuredContent["result"]
+-----------------------------------------------------------------------------
+math_Server.py
+from mcp.server.fastmcp import FastMCP
+
+# Create MCP server instance
+mcp = FastMCP("Math Server")
+
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    """Add two numbers together."""
+    return a + b
+
+@mcp.tool()
+def subtract(a: int, b: int) -> int:
+    """Subtract b from a."""
+    return a - b
+
+@mcp.tool()
+def multiply(a: int, b: int) -> int:
+    """Multiply two numbers together."""
+    return a * b
+
+if __name__ == "__main__":
+    # Important: use stdio transport so the client can connect
+    mcp.run(transport="stdio")
+-----------------------------------------------------------------------
+Simple.py(uvicorn simple:app --reload command)
+from fastapi import FastAPI
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+from math_client import call_add_tool,call_multiply_tool,call_sub_tool
+from weather_client import call_weather_tool
+app = FastAPI()
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allow all websites like localhost:3000
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Simple GET endpoint
+@app.get("/hello/{name}")
+def say_hello(name: str):
+    return {"message": f"Hello, {name}!"}
+
+@app.get("/items/")
+def read_item(item_id: int, q: str | None = None):
+    return {"item_id": item_id, "query": q}
+#http://127.0.0.1:8000/items/?item_id=5&q=test
+
+@app.get("/message")
+def get_message():
+    return {"msg": "Hello from FastAPI!"}
+
+items = []
+
+class Item(BaseModel):
+    name: str
+
+@app.post("/items/")
+def add_item(item: Item):
+    items.append(item.name)
+    return {"message": "Item added!", "items": items}
+
+@app.get("/newitems/")
+def get_items():
+    return {"items": items}
+
+@app.get("/add/{a}/{b}")
+async def add_numbers(a: int, b: int):
+    result = await call_add_tool(a, b)
+    return {"result": result}
+
+@app.get("/subtract/{a}/{b}")
+async def sub_numbers(a: int, b: int):
+    result = await call_sub_tool(a, b)
+    return {"result": result}
+
+@app.get("/multiply/{a}/{b}")
+async def multi_numbers(a: int, b: int):
+    result = await call_multiply_tool(a, b)
+    return {"result": result}
+
+@app.get("/weather/{city}")
+async def get_weather(city: str):
+    result = await call_weather_tool(city)
+    return {"result": result}
+-------------------------------------------------------------------------
+App.js(npx create-react-app weather-app)(cd folder)(npm start)
+
+import React, { useState, useEffect } from "react";
+
+function App() {
+  const [item, setItem] = useState("");
+  const [itemsList, setItemsList] = useState([]);
+
+  // Fetch items when page loads
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const fetchItems = () => {
+    fetch("http://127.0.0.1:8000/newitems/")
+      .then(res => res.json())
+      .then(data => setItemsList(data.items));
+  };
+
+  const addItem = () => {
+    fetch("http://127.0.0.1:8000/items/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: item })
+    })
+      .then(res => res.json())
+      .then(data => {
+        setItemsList(data.items); // update list
+        setItem(""); // clear input
+      });
+  };
+
+  return (
+    <div style={{ textAlign: "center", marginTop: "40px" }}>
+      <h1>React + FastAPI Todo</h1>
+
+      <input
+        type="text"
+        value={item}
+        onChange={(e) => setItem(e.target.value)}
+        placeholder="Enter item"
+      />
+      <button onClick={addItem}>Add</button>
+
+      <ul>
+        {itemsList.map((itm, index) => (
+          <li key={index}>{itm}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default App;
+
+_--_----------
+
+weather_client.py
+import os
+import asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def call_weather_tool(city: str):
+    script_path = os.path.join(os.path.dirname(__file__), "weater_server.py")
+
+    server_params = StdioServerParameters(
+        command="python",
+        args=[script_path],
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool("get_weather", {"city": city})
+            return result.structuredContent["result"]
+---------------------------------------------------------------------------------------
+weater_server.py
+import os
+import requests
+from mcp.server.fastmcp import FastMCP
+
+API_KEY = "c0e81c02f6da78c4c2411c5a8fc90973"  # Put your API key here
+
+mcp = FastMCP("Weather Server")
+
+@mcp.tool()
+def get_weather(city: str) -> str:
+    """Get current weather for a given city"""
+    url = (
+        f"http://api.openweathermap.org/data/2.5/weather?"
+        f"q={city}&appid={API_KEY}&units=metric"
+    )
+    response = requests.get(url)
+    data = response.json()
+
+    if data.get("cod") != 200:
+        return f"City not found: {city}"
+
+    name = data["name"]
+    temp = data["main"]["temp"]
+    desc = data["weather"][0]["description"].title()
+
+    return f"Weather in {name}: {temp}°C, {desc}"
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
+---------------------------------------------------
+simple.py(common for all)
+--------------------------
+App.js
+import React, { useState } from "react";
+
+function App() {
+  const [city, setCity] = useState("");
+  const [weather, setWeather] = useState("");
+
+  const fetchWeather = () => {
+    if (!city) {
+      alert("Please enter a city name!");
+      return;
+    }
+
+    fetch(`http://127.0.0.1:8000/weather/${city}`)
+      .then((res) => res.json())
+      .then((data) => setWeather(data.result))
+      .catch((err) => console.error("API Error:", err));
+  };
+
+  return (
+    <div style={{ textAlign: "center", marginTop: "60px", fontFamily: "Arial" }}>
+      <h1>🌤️ Weather Finder</h1>
+      <p>Enter a city name to check current weather</p>
+
+      <input
+        type="text"
+        value={city}
+        placeholder="Enter city name"
+        onChange={(e) => setCity(e.target.value)}
+        style={{
+          padding: "8px",
+          width: "240px",
+          fontSize: "16px",
+          marginRight: "10px",
+        }}
+      />
+
+      <button
+        onClick={fetchWeather}
+        style={{
+          padding: "10px 16px",
+          fontSize: "16px",
+          cursor: "pointer",
+        }}
+      >
+        Get Weather
+      </button>
+
+      {weather && (
+        <h2 style={{ marginTop: "25px", color: "#0077cc" }}>{weather}</h2>
+      )}
+    </div>
+  );
+}
+
+export default App;
+
+------------
+mcp_sqlite_client.py
+
+import os
+import asyncio
+import json
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+async def call_tool_db(tool: str, payload: dict = None):
+    script = "mcp_sqlite_server.py"  # MCP DB server script name
+
+    server_params = StdioServerParameters(command="python", args=[script])
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool(tool, payload or {})
+            #print("🔍 RAW RESULT:", result)
+            #print("🔍 STRUCTURED:", result.structuredContent)
+            # Prefer structuredContent if available
+            if result.structuredContent and "result" in result.structuredContent:
+                return result.structuredContent["result"]
+
+            # FALLBACK to JSON inside .content
+            if result.content:
+                content_json = json.loads(result.content[0].text)
+                return content_json["result"]
+            return result
+        
+async def main():
+    # ➕ Add new tasks
+    print(await call_tool_db("add_task", {"task": "Learn MCP"}))
+    print(await call_tool_db("add_task", {"task": "Build Todo App"}))
+
+    # 📋 Get all tasks from DB
+    tasks = await call_tool_db("get_tasks")
+    print("Current Todo List:")
+    for task in tasks:
+        print(" -", task)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+-------------------------------------------------------------------------
+mcp_sqlite_Server.py
+
+import sqlite3
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("Todo DB Server")
+
+def get_db():
+    conn = sqlite3.connect("todo.db")
+    conn.execute("CREATE TABLE IF NOT EXISTS todos(id INTEGER PRIMARY KEY, task TEXT)")
+    return conn
+
+@mcp.tool()
+def add_task(task: str) -> str:
+    conn = get_db()
+    conn.execute("INSERT INTO todos(task) VALUES(?)", (task,))
+    conn.commit()
+    return "Task added successfully!"
+
+@mcp.tool()
+def get_tasks() -> list:
+    conn = get_db()
+    cursor = conn.execute("SELECT task FROM todos")
+    tasks= [row[0] for row in cursor.fetchall()]
+    return { "result":tasks }
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
+-------------
+mcp_sqlite_client.py
+
+import os
+import asyncio
+import json
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+async def call_tool_db(tool: str, payload: dict = None):
+    script = "mcp_sqlite_server.py"  # MCP DB server script name
+
+    server_params = StdioServerParameters(command="python", args=[script])
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool(tool, payload or {})
+            #print("🔍 RAW RESULT:", result)
+            #print("🔍 STRUCTURED:", result.structuredContent)
+            # Prefer structuredContent if available
+            if result.structuredContent and "result" in result.structuredContent:
+                return result.structuredContent["result"]
+
+            # FALLBACK to JSON inside .content
+            if result.content:
+                content_json = json.loads(result.content[0].text)
+                return content_json["result"]
+            return result
+        
+async def main():
+    # ➕ Add new tasks
+    print(await call_tool_db("add_task", {"task": "Learn MCP"}))
+    print(await call_tool_db("add_task", {"task": "Build Todo App"}))
+
+    # 📋 Get all tasks from DB
+    tasks = await call_tool_db("get_tasks")
+    print("Current Todo List:")
+    for task in tasks:
+        print(" -", task)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+-------------------------------------------------------------------------
+mcp_sqlite_Server.py
+
+import sqlite3
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("Todo DB Server")
+
+def get_db():
+    conn = sqlite3.connect("todo.db")
+    conn.execute("CREATE TABLE IF NOT EXISTS todos(id INTEGER PRIMARY KEY, task TEXT)")
+    return conn
+
+@mcp.tool()
+def add_task(task: str) -> str:
+    conn = get_db()
+    conn.execute("INSERT INTO todos(task) VALUES(?)", (task,))
+    conn.commit()
+    return "Task added successfully!"
+
+@mcp.tool()
+def get_tasks() -> list:
+    conn = get_db()
+    cursor = conn.execute("SELECT task FROM todos")
+    tasks= [row[0] for row in cursor.fetchall()]
+    return { "result":tasks }
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
