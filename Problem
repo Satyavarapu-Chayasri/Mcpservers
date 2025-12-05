@@ -1,0 +1,9 @@
+Synthetic Fraud Pattern Generation and Validation Platform
+Problem Statement:
+Financial fraud events are rare, limiting availability of diverse datasets for training and evaluating traud detection models. Reliance on sensitive real data restricts sharing and benchmarking, impeding development of robust detection systems. Manual validation of generated fraud scenarios is resource-intensive and inconsistent. The solution focuses on generating realistic, novel synthetic financial transaction datasets containing configurable fraud patterns with structured human-in-the-loop validation to ensure realism and compliance.
+Data Requirements (Guidance):
+Open-source finance and transaction datasets; fraud research papers and typology examples; synthetic transaction schema libraries; labeled fraud scenario datasets; secure data handling protocols; synthetic data generation tools for scalability.
+(Feel free to generate synthetic data as well from the provided access)
+Expected Output/ Demonstration of Solution:
+A scalable multi-agent generative Al platform producing validated synthetic financial transaction datasets with diverse fraud patterns. Deliverables include validated datasets, human-in-the-loop validation interfaces, and evaluation reports on statistical fidelity. Business benefits include enabling robust model benchmarking, improving fraud detection research, and ensuring compliance readiness. Comprehensive documentation and testing support extensibility and deployment.
+Be creative to go beyond as you solve the above needs
